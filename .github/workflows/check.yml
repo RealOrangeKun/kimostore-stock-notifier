@@ -1,0 +1,28 @@
+name: Check stock
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - id: stock
+        run: python check_stock.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      # Stop checking once notified, so it doesn't spam every 10 minutes.
+      # Re-enable from the Actions tab to watch for the next restock.
+      - if: steps.stock.outputs.available == 'true'
+        run: gh workflow disable check.yml --repo ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
